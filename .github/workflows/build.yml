@@ -1,0 +1,61 @@
+name: CI Build
+on:
+  push:
+    branches:
+      - develop
+      - test
+  pull_request:
+    types: [ opened, synchronize, reopened, closed ]
+jobs:
+  QUALITY_GATES_AND_TEST:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[sonar skip]') || github.ref == 'refs/heads/develop'"
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Cache Maven packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Run Analysis and Wait for Quality Gate
+        run: |
+          ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          -Dsonar.host.url="https://sonarcloud.io" \
+          -Dsonar.organization=obligatorio-devops-2021 \
+          -Dsonar.projectKey=shipping-service-obligatorio \
+  BUILD_AND_PUSH-IMAGE:
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    needs: ['QUALITY_GATES_AND_TEST']
+    steps:
+      # Checkout
+      - uses: actions/checkout@v2
+      # JDK 8 para build
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - name: Cache Maven packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      # Package con Maven
+      - name: Build project with Maven
+        run: "./mvnw -B package -Pjib -Djib.to.auth.username=${{ secrets.HUB_DOCKER_USERNAME }} -Djib.to.auth.password=${{ secrets.HUB_DOCKER_PASSWORD }}"
