@@ -4,8 +4,8 @@ on:
     branches:
       - develop
       - test
-  pull_request:
-    types: [ opened, synchronize, reopened, closed ]
+#  pull_request:
+#    types: [ opened, synchronize, reopened, closed ]
 jobs:
   QUALITY_GATES_AND_TEST:
     runs-on: ubuntu-latest

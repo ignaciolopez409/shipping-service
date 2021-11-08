@@ -8,9 +8,9 @@
 		<relativePath /> <!-- lookup parent from repository test -->
 	</parent>	
 	<groupId>uy.edu.ort.devops</groupId>
-	<artifactId>shipping-service-example</artifactId>
+	<artifactId>shipping-service</artifactId>
 	<version>0.0.5-SNAPSHOT</version>
-	<name>shipping-service-example</name>
+	<name>shipping-service</name>
 	<description>Proyecto Shipping Service Obligatorio</description>	
 	<properties>
 		<java.version>1.8</java.version>
