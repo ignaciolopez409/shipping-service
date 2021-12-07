@@ -12,8 +12,6 @@ jobs:
     steps:
       # Checkout
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       # JDK 8 para build ['java-version', 'java-package', 'architecture', 'jdkFile', 'server-id', 'server-username', 'server-password','settings-path', 'gpg-private-key', 'gpg-passphrase']
       - name: Set up JDK 8
         uses: actions/setup-java@v1
@@ -37,3 +35,31 @@ jobs:
         run: "./mvnw -B -X release:prepare release:perform -Dusername=${{ github.actor }} -Dpassword=${{ secrets.GITHUB_TOKEN }} -Pjib -Darguments=\"$RELEASE_ARGUMENTS\""
         env:
           RELEASE_ARGUMENTS: -Djib.to.auth.username=${{ secrets.HUB_DOCKER_USERNAME }} -Djib.to.auth.password=${{ secrets.HUB_DOCKER_PASSWORD }}
+    outputs:
+      POM_VERSION: ${{ steps.compile_output.outputs.pom_version }}
+      BRANCH: ${{ steps.compile_output.outputs.pom_version }}
+  DEPLOY:
+    runs-on: ubuntu-latest
+    needs: [ 'BUILD_AND_PUSH_IMAGE' ]
+    steps:
+      - uses: actions/checkout@v2.4.0
+        with:
+          repository: 'ignaciolopez409/infra-obligatorio-devops'
+          persist-credentials: false
+          token: ${{ secrets.PUSH_TOKEN }}
+          ref: 'main'
+      - run: |
+          POM_VERSION="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.POM_VERSION }}"
+          BRANCH="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.BRANCH }}"
+          PROJECT="orders"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          sed "s/tag: *.*/tag: $POM_VERSION/" -i environments/$BRANCH/values/$PROJECT.yaml
+          git add environments/$BRANCH/values/$PROJECT.yaml
+          git commit -m "[CD] - Changed $PROJECT -> $POM_VERSION | $BRANCH"
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.PUSH_TOKEN }}
+          branch: "main"
+          repository: 'ignaciolopez409/infra-obligatorio-devops'

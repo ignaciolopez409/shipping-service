@@ -5,12 +5,13 @@ on:
       - develop
       - test
 #  pull_request:
-#    types: [ opened, synchronize, reopened, closed ]
+#    types: [ opened ]
 jobs:
   QUALITY_GATES_AND_TEST:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[sonar skip]') || github.ref == 'refs/heads/develop'"
     env:
+      PROJECT: "shipping"
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -34,8 +35,8 @@ jobs:
           ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
           -Dsonar.host.url="https://sonarcloud.io" \
           -Dsonar.organization=obligatorio-devops-2021 \
-          -Dsonar.projectKey=shipping-service-obligatorio \
-  BUILD_AND_PUSH-IMAGE:
+          -Dsonar.projectKey=$PROJECT-service-obligatorio \
+  BUILD_AND_PUSH_IMAGE:
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-latest
     permissions:
@@ -56,6 +57,40 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      # Package con Maven
       - name: Build project with Maven
         run: "./mvnw -B package -Pjib -Djib.to.auth.username=${{ secrets.HUB_DOCKER_USERNAME }} -Djib.to.auth.password=${{ secrets.HUB_DOCKER_PASSWORD }}"
+      - name: Extract branch name
+        shell: bash
+        run: |
+          VERSION=$(./mvnw -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:1.6.0:exec)
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "##[set-output name=pom_version;]$(echo $VERSION)"
+        id: compile_output
+    outputs:
+      POM_VERSION: ${{ steps.compile_output.outputs.pom_version }}
+      BRANCH: ${{ steps.compile_output.outputs.branch }}
+  DEPLOY:
+    runs-on: ubuntu-latest
+    needs: ['BUILD_AND_PUSH_IMAGE']
+    steps:
+      - uses: actions/checkout@v2.4.0
+        with:
+          repository: 'ignaciolopez409/infra-obligatorio-devops'
+          persist-credentials: false
+          token: ${{ secrets.PUSH_TOKEN }}
+          ref: 'main'
+      - run: |
+          POM_VERSION="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.POM_VERSION }}"
+          BRANCH="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.BRANCH }}"
+          PROJECT="shipping"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          sed "s/tag: *.*/tag: $POM_VERSION/" -i environments/$BRANCH/values/$PROJECT.yaml
+          git add environments/$BRANCH/values/$PROJECT.yaml
+          git commit -m "[CD] - Changed $PROJECT -> $POM_VERSION | $BRANCH"
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.PUSH_TOKEN }}
+          branch: "main"
+          repository: 'ignaciolopez409/infra-obligatorio-devops'
