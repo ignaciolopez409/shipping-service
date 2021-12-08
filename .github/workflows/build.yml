@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[sonar skip]') || github.ref == 'refs/heads/develop'"
     env:
-      PROJECT: "orders"
+      PROJECT: "shipping"
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -35,9 +35,6 @@ jobs:
   BUILD_AND_PUSH_IMAGE:
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     needs: ['QUALITY_GATES_AND_TEST']
     steps:
       # Checkout
@@ -71,7 +68,7 @@ jobs:
     env:
       INFRA_BRANCH: "main"
       INFRA_REPO_URL: "ignaciolopez409/infra-obligatorio-devops"
-      PROJECT: "orders"
+      PROJECT: "shipping"
     steps:
       - uses: actions/checkout@v2.4.0
         with:
@@ -82,7 +79,7 @@ jobs:
       - run: |
           POM_VERSION="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.POM_VERSION }}"
           BRANCH="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.BRANCH }}"
-          PROJECT="orders"
+          PROJECT="shipping"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           sed "s/tag: *.*/tag: $POM_VERSION/" -i environments/$BRANCH/values/$PROJECT.yaml

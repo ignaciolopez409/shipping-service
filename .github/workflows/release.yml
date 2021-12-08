@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - master
-#  pull_request:
-#    types: [ closed ]
 jobs:
   RELEASE_AND_PUSH-IMAGE:
     runs-on: ubuntu-latest
@@ -30,6 +28,14 @@ jobs:
         run: |
           git config --global user.name "${{ github.actor}}"
           git config --global user.email "${{ github.actor }}@gmail.com"
+      #Get POM Version and branch
+      - name: Extract branch name
+        shell: bash
+        run: |
+          VERSION=$(./mvnw -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:1.6.0:exec)
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "##[set-output name=pom_version;]$(echo ${VERSION#-SNAPSHOT})"
+        id: compile_output
       # Package with Maven & jib profile to build & push docker image
       - name: Release
         run: "./mvnw -B -X release:prepare release:perform -Dusername=${{ github.actor }} -Dpassword=${{ secrets.GITHUB_TOKEN }} -Pjib -Darguments=\"$RELEASE_ARGUMENTS\""
@@ -37,7 +43,7 @@ jobs:
           RELEASE_ARGUMENTS: -Djib.to.auth.username=${{ secrets.HUB_DOCKER_USERNAME }} -Djib.to.auth.password=${{ secrets.HUB_DOCKER_PASSWORD }}
     outputs:
       POM_VERSION: ${{ steps.compile_output.outputs.pom_version }}
-      BRANCH: ${{ steps.compile_output.outputs.pom_version }}
+      BRANCH: ${{ steps.compile_output.outputs.branch }}
   DEPLOY:
     runs-on: ubuntu-latest
     needs: [ 'BUILD_AND_PUSH_IMAGE' ]
@@ -51,7 +57,7 @@ jobs:
       - run: |
           POM_VERSION="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.POM_VERSION }}"
           BRANCH="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.BRANCH }}"
-          PROJECT="orders"
+          PROJECT="shipping"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           sed "s/tag: *.*/tag: $POM_VERSION/" -i environments/$BRANCH/values/$PROJECT.yaml
