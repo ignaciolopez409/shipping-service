@@ -28,7 +28,6 @@ jobs:
         run: |
           git config --global user.name "${{ github.actor}}"
           git config --global user.email "${{ github.actor }}@gmail.com"
-      #Get POM Version and branch
       - name: Extract branch name
         shell: bash
         run: |
@@ -61,11 +60,21 @@ jobs:
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           sed "s/tag: *.*/tag: $POM_VERSION/" -i environments/$BRANCH/values/$PROJECT.yaml
-          git add environments/$BRANCH/values/$PROJECT.yaml
-          git commit -m "[CD] - Changed $PROJECT -> $POM_VERSION | $BRANCH"
+          if [ $(git status --porcelain | wc -l) -eq "0" ]; then
+            echo "🔴 $PROJECT -> Not updated $POM_VERSION in $BRANCH."
+            NEED_PUSH=false
+          else
+            MSG="🟢 $PROJECT -> Updated $POM_VERSION in $BRANCH. Executing [CD] | $BRANCH"
+            NEED_PUSH=true
+            echo "$MSG"
+            git add environments/$BRANCH/values/$PROJECT.yaml
+            git commit -m "$MSG"
+          fi
+          echo "##[set-output name=pom_version;]$(echo $NEED_PUSH)"
       - name: Push changes
         uses: ad-m/github-push-action@master
+        if: ${{ steps.compile_output.outputs.pom_version }} == "true"
         with:
           github_token: ${{ secrets.PUSH_TOKEN }}
-          branch: "main"
-          repository: 'ignaciolopez409/infra-obligatorio-devops'
+          branch: ${{ env.INFRA_BRANCH }}
+          repository: ${{ env.INFRA_REPO_URL }}
