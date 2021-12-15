@@ -54,8 +54,8 @@ jobs:
           token: ${{ secrets.PUSH_TOKEN }}
           ref: 'main'
       - run: |
-          POM_VERSION="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.POM_VERSION }}"
-          BRANCH="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.BRANCH }}"
+          POM_VERSION="${{ needs.RELEASE_AND_PUSH-IMAGE.outputs.POM_VERSION }}"
+          BRANCH="${{ needs.RELEASE_AND_PUSH-IMAGE.outputs.BRANCH }}"
           PROJECT="shipping"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
