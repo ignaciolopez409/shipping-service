@@ -76,5 +76,5 @@ jobs:
         if: ${{ steps.compile_output.outputs.pom_version }} == "true"
         with:
           github_token: ${{ secrets.PUSH_TOKEN }}
-          branch: ${{ env.INFRA_BRANCH }}
-          repository: ${{ env.INFRA_REPO_URL }}
+          branch: 'main'
+          repository: 'ignaciolopez409/infra-obligatorio-devops'
