@@ -33,7 +33,7 @@ jobs:
         run: |
           VERSION=$(./mvnw -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:1.6.0:exec)
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "##[set-output name=pom_version;]$(echo ${VERSION#-SNAPSHOT})"
+          echo "##[set-output name=pom_version;]$(echo ${VERSION} | cut -d '-' -f1)"
         id: compile_output
       # Package with Maven & jib profile to build & push docker image
       - name: Release
@@ -45,7 +45,7 @@ jobs:
       BRANCH: ${{ steps.compile_output.outputs.branch }}
   DEPLOY:
     runs-on: ubuntu-latest
-    needs: [ 'RELEASE_AND_PUSH_IMAGE' ]
+    needs: [ 'RELEASE_AND_PUSH-IMAGE' ]
     steps:
       - uses: actions/checkout@v2.4.0
         with:
@@ -54,8 +54,8 @@ jobs:
           token: ${{ secrets.PUSH_TOKEN }}
           ref: 'main'
       - run: |
-          POM_VERSION="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.POM_VERSION }}"
-          BRANCH="${{ needs.BUILD_AND_PUSH_IMAGE.outputs.BRANCH }}"
+          POM_VERSION="${{ needs.RELEASE_AND_PUSH-IMAGE.outputs.POM_VERSION }}"
+          BRANCH="${{ needs.RELEASE_AND_PUSH-IMAGE.outputs.BRANCH }}"
           PROJECT="shipping"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -76,5 +76,5 @@ jobs:
         if: ${{ steps.compile_output.outputs.pom_version }} == "true"
         with:
           github_token: ${{ secrets.PUSH_TOKEN }}
-          branch: ${{ env.INFRA_BRANCH }}
-          repository: ${{ env.INFRA_REPO_URL }}
+          branch: 'main'
+          repository: 'ignaciolopez409/infra-obligatorio-devops'
