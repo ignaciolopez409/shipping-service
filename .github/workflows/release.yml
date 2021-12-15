@@ -33,7 +33,7 @@ jobs:
         run: |
           VERSION=$(./mvnw -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:1.6.0:exec)
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "##[set-output name=pom_version;]$(echo ${VERSION#-SNAPSHOT})"
+          echo "##[set-output name=pom_version;]$(echo ${VERSION} | cut -d '-' -f1)"
         id: compile_output
       # Package with Maven & jib profile to build & push docker image
       - name: Release
